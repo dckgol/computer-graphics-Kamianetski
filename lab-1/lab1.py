@@ -1,6 +1,5 @@
 import tkinter as tk
 from tkinter import ttk, colorchooser
-import math
 
 class ColorConverterApp:
     def __init__(self, root):
@@ -13,9 +12,9 @@ class ColorConverterApp:
         self.y_var = tk.DoubleVar(value=0)
         self.k_var = tk.DoubleVar(value=0)
         
-        self.r_var = tk.IntVar(value=0)
-        self.g_var = tk.IntVar(value=0)
-        self.b_var = tk.IntVar(value=0)
+        self.r_var = tk.DoubleVar(value=0)
+        self.g_var = tk.DoubleVar(value=0)
+        self.b_var = tk.DoubleVar(value=0)
         
         self.h_var = tk.DoubleVar(value=0)
         self.s_var = tk.DoubleVar(value=0)
@@ -116,7 +115,7 @@ class ColorConverterApp:
     def create_hsv_section(self, parent):
         labels = ['Hue (H):', 'Saturation (S):', 'Value (V):']
         vars = [self.h_var, self.s_var, self.v_var]
-        ranges = [(0, 360), (0, 100), (0, 100)]
+        ranges = [(0, 359), (0, 100), (0, 100)]
         
         for i, (label, var, range_vals) in enumerate(zip(labels, vars, ranges)):
             ttk.Label(parent, text=label).grid(row=i, column=0, sticky=tk.W, pady=5)
@@ -167,22 +166,64 @@ class ColorConverterApp:
         if self.updating:
             return
         self.updating = True
-        self.update_from_cmyk()
-        self.updating = False
+        try:
+            c = float(self.c_var.get())
+            m = float(self.m_var.get())
+            y = float(self.y_var.get())
+            k = float(self.k_var.get())
+            
+            self.c_var.set(max(0, min(100, c)))
+            self.m_var.set(max(0, min(100, m)))
+            self.y_var.set(max(0, min(100, y)))
+            self.k_var.set(max(0, min(100, k)))
+            
+            self.update_from_cmyk()
+        except (ValueError, tk.TclError):
+            pass
+        finally:
+            self.updating = False
     
     def on_rgb_entry(self, *args):
         if self.updating:
             return
         self.updating = True
-        self.update_from_rgb()
-        self.updating = False
+        try:
+            r = float(self.r_var.get())
+            g = float(self.g_var.get())
+            b = float(self.b_var.get())
+            
+            r = max(0, min(255, r))
+            g = max(0, min(255, g))
+            b = max(0, min(255, b))
+            
+            self.r_var.set(r)
+            self.g_var.set(g)
+            self.b_var.set(b)
+            
+            self.update_from_rgb()
+        except (ValueError, tk.TclError):
+            pass
+        finally:
+            self.updating = False
     
     def on_hsv_entry(self, *args):
         if self.updating:
             return
         self.updating = True
-        self.update_from_hsv()
-        self.updating = False
+        try:
+            h = float(self.h_var.get())
+            s = float(self.s_var.get())
+            v = float(self.v_var.get())
+            
+            self.h_var.set(max(0, min(359, h)))
+            self.s_var.set(max(0, min(100, s)))
+            self.v_var.set(max(0, min(100, v)))
+            
+            self.update_from_hsv()
+        except (ValueError, tk.TclError):
+            pass
+        finally:
+            self.updating = False
     
     def choose_color_from_palette(self):
         color = colorchooser.askcolor(title="Выберите цвет")
@@ -206,6 +247,15 @@ class ColorConverterApp:
         r = self.r_var.get()
         g = self.g_var.get()
         b = self.b_var.get()
+        
+        r = max(0, min(255, r))
+        g = max(0, min(255, g))
+        b = max(0, min(255, b))
+        
+        self.r_var.set(r)
+        self.g_var.set(g)
+        self.b_var.set(b)
+        
         self.update_from_rgb_values(r, g, b)
     
     def update_from_hsv(self):
@@ -222,19 +272,19 @@ class ColorConverterApp:
         self.b_var.set(int(b))
         
         c, m, y, k = self.rgb_to_cmyk(r, g, b)
-        self.c_var.set(round(c * 100))
-        self.m_var.set(round(m * 100))
-        self.y_var.set(round(y * 100))
-        self.k_var.set(round(k * 100))
+        self.c_var.set(round(c * 100, 2))
+        self.m_var.set(round(m * 100, 2))
+        self.y_var.set(round(y * 100, 2))
+        self.k_var.set(round(k * 100, 2))
         
         h, s, v = self.rgb_to_hsv(r, g, b)
-        self.h_var.set(round(h))
-        self.s_var.set(round(s * 100))
-        self.v_var.set(round(v * 100))
+        self.h_var.set(round(h, 2))
+        self.s_var.set(round(s * 100, 2))
+        self.v_var.set(round(v * 100, 2))
         
         hex_color = f'#{int(r):02x}{int(g):02x}{int(b):02x}'
         self.color_display.config(bg=hex_color)
-        self.hex_var.set(hex_color)
+        self.hex_var.set(hex_color.upper())
     
     def cmyk_to_rgb(self, c, m, y, k):
         r = 255 * (1 - c) * (1 - k)
@@ -252,7 +302,7 @@ class ColorConverterApp:
         
         k = 1 - max(r_norm, g_norm, b_norm)
         
-        if k == 1:
+        if k > 0.9999:
             return 0, 0, 0, 1
         
         c = (1 - r_norm - k) / (1 - k)
@@ -280,7 +330,6 @@ class ColorConverterApp:
             h = 60 * (((r_norm - g_norm) / delta) + 4)
         
         s = 0 if cmax == 0 else delta / cmax
-        
         v = cmax
         
         return h, s, v

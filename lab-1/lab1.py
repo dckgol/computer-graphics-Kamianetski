@@ -241,7 +241,15 @@ class ColorConverterApp:
         k = self.k_var.get() / 100.0
         
         r, g, b = self.cmyk_to_rgb(c, m, y, k)
-        self.update_from_rgb_values(r, g, b)
+
+        h, s, v = self.rgb_to_hsv(r, g, b)
+        self.h_var.set(round(h, 2))
+        self.s_var.set(round(s * 100, 2))
+        self.v_var.set(round(v * 100, 2))
+        
+        hex_color = f'#{int(r):02x}{int(g):02x}{int(b):02x}'
+        self.color_display.config(bg=hex_color)
+        self.hex_var.set(hex_color.upper())
     
     def update_from_rgb(self):
         r = self.r_var.get()
